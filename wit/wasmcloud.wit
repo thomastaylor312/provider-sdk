@@ -72,8 +72,6 @@ interface types {
 }
 
 interface health-check {
-  use types.{invocation, invocation-response, health-check-response, link-definition, wasmcloud-entity}
-
   health-request: func() -> health-check-response
 }
 

@@ -23,7 +23,7 @@ use crate::{
         LinkDefinition,
     },
     deserialize,
-    error::{InvocationResult, ProviderError, ProviderResult, ValidationError},
+    error::{ProviderError, ProviderResult, ValidationError, ProviderInvocationError, InvocationError},
     rpc_client::RpcClient,
     serialize, Context, Provider,
 };
@@ -288,13 +288,13 @@ impl ProviderConnection {
         Ok(handle)
     }
 
-    async fn handle_rpc<P>(&self, provider: P, inv: Invocation) -> InvocationResult<Vec<u8>>
+    async fn handle_rpc<P>(&self, provider: P, inv: Invocation) -> Result<Vec<u8>, ProviderInvocationError>
     where
         P: Provider + Clone,
     {
         let inv = self.rpc_client.dechunk(inv).await?;
-        let (inv, claims) = self.rpc_client.validate_invocation(inv).await?;
-        self.validate_provider_invocation(&inv, &claims).await?;
+        let (inv, claims) = self.rpc_client.validate_invocation(inv).await.map_err(InvocationError::from)?;
+        self.validate_provider_invocation(&inv, &claims).await.map_err(InvocationError::from)?;
         let span = tracing::debug_span!("dispatch", public_key = %inv.origin.public_key, method = %inv.operation);
         provider
             .dispatch(

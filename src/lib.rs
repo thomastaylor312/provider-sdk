@@ -2,11 +2,12 @@ use std::{borrow::Cow, collections::HashMap, time::Duration};
 
 use async_nats::{ConnectOptions, Event};
 use async_trait::async_trait;
+use error::ProviderInvocationError;
 use serde::{Deserialize, Serialize};
 use tracing::{error, info, warn};
 
 mod chunkify;
-mod core;
+pub mod core;
 pub mod error;
 pub mod otel;
 pub mod provider;
@@ -29,11 +30,11 @@ pub(crate) const DEFAULT_NATS_ADDR: &str = "nats://127.0.0.1:4222";
 pub const DEFAULT_RPC_TIMEOUT_MILLIS: Duration = Duration::from_millis(2000);
 
 // helper methods for serializing and deserializing
-pub(crate) fn deserialize<'de, T: Deserialize<'de>>(buf: &'de [u8]) -> InvocationResult<T> {
+pub fn deserialize<'de, T: Deserialize<'de>>(buf: &'de [u8]) -> InvocationResult<T> {
     rmp_serde::from_slice(buf).map_err(InvocationError::from)
 }
 
-pub(crate) fn serialize<T: Serialize>(data: &T) -> InvocationResult<Vec<u8>> {
+pub fn serialize<T: Serialize>(data: &T) -> InvocationResult<Vec<u8>> {
     rmp_serde::to_vec_named(data).map_err(InvocationError::from)
 }
 
@@ -105,7 +106,7 @@ pub struct Context {
 /// The super trait containing all necessary traits for a provider
 pub trait Provider: MessageDispatch + ProviderHandler + Send + Sync + 'static {}
 
-/// Handler for sending out messages to the host. This will likely be automatically generated but
+/// Handler for receiving messages from an actor and sending them to the right method for a provider. This will likely be automatically generated but
 /// can be overridden if you know what you're doing
 #[async_trait]
 pub trait MessageDispatch {
@@ -114,7 +115,7 @@ pub trait MessageDispatch {
         ctx: Context,
         method: String,
         body: Cow<'a, [u8]>,
-    ) -> InvocationResult<Vec<u8>>;
+    ) -> Result<Vec<u8>, ProviderInvocationError>;
 }
 
 /// CapabilityProvider handling of messages from host

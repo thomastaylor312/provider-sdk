@@ -17,6 +17,18 @@ pub enum ProviderError {
     Initialization(String),
 }
 
+/// A wrapper around a provider invocation error that allows for the provider to return an error but
+/// allows the provider-sdk to still handle an invocation error properly
+// NOTE(thomastaylor312): I don't _love_ this, but it does allow us to keep the provider SDK errors
+// separate from what each provider can return
+#[derive(Debug, thiserror::Error)]
+pub enum ProviderInvocationError {
+    #[error(transparent)]
+    Invocation(#[from] InvocationError),
+    #[error("{0}")]
+    Provider(String),
+}
+
 /// Errors that can occur when sending or receiving an invocation, including the `dispatch` method
 /// of the provider.
 #[derive(Debug, thiserror::Error)]
@@ -43,6 +55,9 @@ pub enum InvocationError {
     /// Errors that occur when chunking data
     #[error("Error when chunking data: {0}")]
     Chunking(String),
+    /// Returned when an invocation is malformed (e.g. has a method type that isn't supported)
+    #[error("Malformed invocation: {0}")]
+    Malformed(String),
 }
 
 /// All errors that can occur when validating an invocation
