@@ -170,6 +170,7 @@ pub mod logging {
     use serde::{Deserialize, Serialize};
 
     #[derive(Clone, Debug, Deserialize, Serialize)]
+    #[serde(rename_all = "lowercase")]
     pub enum Level {
         Error,
         Warn,
